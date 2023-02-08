@@ -98,7 +98,7 @@ void writeTPCTracks_Reference(const char* inputfile, const char* savepath)
 
           // sector info
           for (int sectorentry(0); sectorentry < clSector->size(); ++sectorentry){
-            fw << clRow[0][sectorentry] << " ";
+            fw << clSector[0][sectorentry] << " ";
           }
           unsigned long NPad = nTotalCluster - clSector->size();
           for (int sPad(0); sPad < NPad; ++sPad){
@@ -166,7 +166,7 @@ void writeTPCTracks_Reference(const char* inputfile, const char* savepath)
 
           // sector info
           for (int sectorentry(0); sectorentry < clSector->size(); ++sectorentry){
-            fw << clRow[0][sectorentry] << " ";
+            fw << clSector[0][sectorentry] << " ";
           }
           unsigned long NPad = nTotalCluster - clSector->size();
           for (int sPad(0); sPad < NPad; ++sPad){
@@ -232,7 +232,7 @@ void writeTPCTracks_Reference(const char* inputfile, const char* savepath)
 
           // sector info
           for (int sectorentry(0); sectorentry < clSector->size(); ++sectorentry){
-            fw << clRow[0][sectorentry] << " ";
+            fw << clSector[0][sectorentry] << " ";
           }
           unsigned long NPad = nTotalCluster - clSector->size();
           for (int sPad(0); sPad < NPad; ++sPad){
