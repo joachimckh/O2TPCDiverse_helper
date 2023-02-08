@@ -5,21 +5,23 @@
 
 using namespace std;
 
-void writeTPCTracks_Reference()//const char* inputfile, const char* suffix, const char* fName)
+void writeTPCTracks_Reference(const char* inputfile, const char* savepath)
 {
 
-    TFile* f = TFile::Open("/Users/joachimcarlokristianhansen/st_O2_ML_SC_DS/o2_tpc_sc_sim_2/tpc-trackStudy.root");
+    // TFile* f = TFile::Open("/Users/joachimcarlokristianhansen/st_O2_ML_SC_DS/o2_tpc_sc_sim_2/tpc-trackStudy.root");
+    TFile* f = TFile::Open(inputfile);
+
 
     TTree* tpc = f->Get<TTree>("tpc");
 
 
 
     o2::tpc::TrackTPC* iniTrack = nullptr;
-    o2::track::TrackParCov *intTrackRef = nullptr, * movTrackRef = nullptr, *mcTrack = nullptr;
+    o2::track::TrackParCov *iniTrackRef = nullptr, * movTrackRef = nullptr, *mcTrack = nullptr;
     float bcTB, dz;
 
     tpc->SetBranchAddress("iniTrack", &iniTrack);
-    tpc->SetBranchAddress("intTrackRef", &intTrackRef);
+    tpc->SetBranchAddress("iniTrackRef", &iniTrackRef);
     tpc->SetBranchAddress("movTrackRef", &movTrackRef);
 
     o2::track::TrackPar * mcTr = nullptr;
@@ -33,23 +35,49 @@ void writeTPCTracks_Reference()//const char* inputfile, const char* suffix, cons
     // mC[15] correlation matrix // getCov()
     double mX, mAlpha, mY, mZ, Snp, Tgl, Q2Pt;
 
-    // object[4] trackarray = new object[4] {iniTrack, intTrackRef, movTrackRef, mcTr};
+    // CLUSTERS
+    // clSector
+    // clRow
+    // clIniX
+    // clIniY
+    // clIniZ
+    // clMovX
+    // clMovY
+    // clMovZ
+
+    std::vector<float> *clIniX = nullptr,*clIniY = nullptr,*clIniZ = nullptr,*clMovX = nullptr,*clMovY = nullptr,*clMovZ = nullptr;
+    std::vector<short> *clSector = nullptr,*clRow = nullptr;
 
 
+    tpc->SetBranchAddress("clIniX",&clIniX);
+    tpc->SetBranchAddress("clIniY",&clIniY);
+    tpc->SetBranchAddress("clIniZ",&clIniZ);
+    tpc->SetBranchAddress("clMovX",&clMovX);
+    tpc->SetBranchAddress("clMovY",&clMovY);
+    tpc->SetBranchAddress("clMovZ",&clMovZ);
+
+    tpc->SetBranchAddress("clSector",&clSector);
+    tpc->SetBranchAddress("clRow",&clRow);
+
+
+    // object[4] trackarray = new object[4] {iniTrack, iniTrackRef, movTrackRef, mcTr};
+
+    unsigned long nTotalCluster = 159;
 
     // iniTrack
     try {
 
        //open file for writing
-       ofstream fw("/Users/joachimcarlokristianhansen/st_O2_ML_SC_DS/TPC-analyzer/TPCTracks/data_files/iniTrack.txt", std::ofstream::out);
+       ofstream fw(Form("%s/iniTrack.txt",savepath), std::ofstream::out);
        //check if file was successfully opened for writing
        if (fw.is_open())
        {
          cout << "\nWriting  iniTrack contents to file...";
+
          for (int iEntry = 0; iEntry < tpc->GetEntries(); ++iEntry) { // <- Just loop over all entries
+
            // Load the data for the given tree entry
           tpc->GetEntry(iEntry);
-
            // iniTrack->print();
           mX = iniTrack->getX();
           mAlpha = iniTrack->getAlpha();
@@ -59,10 +87,38 @@ void writeTPCTracks_Reference()//const char* inputfile, const char* suffix, cons
           Tgl = iniTrack->getTgl();
           Q2Pt = iniTrack->getQ2Pt();
 
+
           fw << iEntry << " " << mX << " " << mAlpha << " " << mY << " " << mZ << " " << Snp << " " << Tgl << " " << Q2Pt << " " << bcTB << " " << dz << " ";
 
           for (int iCov = 0; iCov<15; ++iCov){
             fw << iniTrack->getCov()[iCov] << " ";
+          }
+
+          // add cluster information
+
+          // sector info
+          for (int sectorentry(0); sectorentry < clSector->size(); ++sectorentry){
+            fw << clRow[0][sectorentry] << " ";
+          }
+          unsigned long NPad = nTotalCluster - clSector->size();
+          for (int sPad(0); sPad < NPad; ++sPad){
+            fw << 0 << " ";
+          }
+          // row info
+          for (int rowentry(0); rowentry < clRow->size(); ++rowentry){
+            fw << clRow[0][rowentry] << " ";
+          }
+          unsigned long NRow = nTotalCluster - clRow->size();
+          for (int sRow(0); sRow < NRow; ++sRow){
+            fw << 0 << " ";
+          }
+          // coordinate
+          for (int xyz(0); xyz < clIniX->size(); ++xyz){
+            fw << clIniX[0][xyz] << " " << clIniY[0][xyz] << " " << clIniZ[0][xyz] << " ";
+          }
+          unsigned long NCo = nTotalCluster - clIniX->size();
+          for (int sCo(0); sCo < NCo; ++sCo){
+            fw << 0 << " " << 0 << " " << 0 << " ";
           }
 
           fw << "\n";
@@ -78,11 +134,11 @@ void writeTPCTracks_Reference()//const char* inputfile, const char* suffix, cons
 
 
 
-    // intTrackRef <- burde väre den samme som iniTrack - men tjek når det er eksporteret...
+    // iniTrackRef <- burde väre den samme som iniTrack - men tjek når det er eksporteret...
     try {
 
        //open file for writing
-       ofstream fw("/Users/joachimcarlokristianhansen/st_O2_ML_SC_DS/TPC-analyzer/TPCTracks/data_files/iniTrackRef.txt", std::ofstream::out);
+       ofstream fw(Form("%s/iniTrackRef.txt",savepath), std::ofstream::out);
        //check if file was successfully opened for writing
        if (fw.is_open())
        {
@@ -92,18 +148,45 @@ void writeTPCTracks_Reference()//const char* inputfile, const char* suffix, cons
           tpc->GetEntry(iEntry);
 
            // iniTrack->print();
-          mX = intTrackRef->getX();
-          mAlpha = intTrackRef->getAlpha();
-          mY = intTrackRef->getY();
-          mZ = intTrackRef->getZ();
-          Snp = intTrackRef->getSnp();
-          Tgl = intTrackRef->getTgl();
-          Q2Pt = intTrackRef->getQ2Pt();
+          mX = iniTrackRef->getX();
+          mAlpha = iniTrackRef->getAlpha();
+          mY = iniTrackRef->getY();
+          mZ = iniTrackRef->getZ();
+          Snp = iniTrackRef->getSnp();
+          Tgl = iniTrackRef->getTgl();
+          Q2Pt = iniTrackRef->getQ2Pt();
 
           fw << iEntry << " " << mX << " " << mAlpha << " " << mY << " " << mZ << " " << Snp << " " << Tgl << " " << Q2Pt << " " << bcTB << " " << dz << " ";
 
           for (int iCov = 0; iCov<15; ++iCov){
-            fw << intTrackRef->getCov()[iCov] << " ";
+            fw << iniTrackRef->getCov()[iCov] << " ";
+          }
+
+          // add cluster information
+
+          // sector info
+          for (int sectorentry(0); sectorentry < clSector->size(); ++sectorentry){
+            fw << clRow[0][sectorentry] << " ";
+          }
+          unsigned long NPad = nTotalCluster - clSector->size();
+          for (int sPad(0); sPad < NPad; ++sPad){
+            fw << 0 << " ";
+          }
+          // row info
+          for (int rowentry(0); rowentry < clRow->size(); ++rowentry){
+            fw << clRow[0][rowentry] << " ";
+          }
+          unsigned long NRow = nTotalCluster - clRow->size();
+          for (int sRow(0); sRow < NRow; ++sRow){
+            fw << 0 << " ";
+          }
+          // coordinate
+          for (int xyz(0); xyz < clIniX->size(); ++xyz){
+            fw << clIniX[0][xyz] << " " << clIniY[0][xyz] << " " << clIniZ[0][xyz] << " ";
+          }
+          unsigned long NCo = nTotalCluster - clIniX->size();
+          for (int sCo(0); sCo < NCo; ++sCo){
+            fw << 0 << " " << 0 << " " << 0 << " ";
           }
 
           fw << "\n";
@@ -121,7 +204,7 @@ void writeTPCTracks_Reference()//const char* inputfile, const char* suffix, cons
     // movTrackRef
     try {
        //open file for writing
-       ofstream fw("/Users/joachimcarlokristianhansen/st_O2_ML_SC_DS/TPC-analyzer/TPCTracks/data_files/movTrackRef.txt", std::ofstream::out);
+       ofstream fw(Form("%s/movTrackRef.txt",savepath), std::ofstream::out);
        //check if file was successfully opened for writing
        if (fw.is_open())
        {
@@ -145,6 +228,34 @@ void writeTPCTracks_Reference()//const char* inputfile, const char* suffix, cons
             fw << movTrackRef->getCov()[iCov] << " ";
           }
 
+          // add cluster information
+
+          // sector info
+          for (int sectorentry(0); sectorentry < clSector->size(); ++sectorentry){
+            fw << clRow[0][sectorentry] << " ";
+          }
+          unsigned long NPad = nTotalCluster - clSector->size();
+          for (int sPad(0); sPad < NPad; ++sPad){
+            fw << 0 << " ";
+          }
+          // row info
+          for (int rowentry(0); rowentry < clRow->size(); ++rowentry){
+            fw << clRow[0][rowentry] << " ";
+          }
+          unsigned long NRow = nTotalCluster - clRow->size();
+          for (int sRow(0); sRow < NRow; ++sRow){
+            fw << 0 << " ";
+          }
+          // coordinate
+          for (int xyz(0); xyz < clMovX->size(); ++xyz){
+            fw << clMovX[0][xyz] << " " << clMovY[0][xyz] << " " << clMovZ[0][xyz] << " ";
+          }
+          unsigned long NCo = nTotalCluster - clMovX->size();
+          for (int sCo(0); sCo < NCo; ++sCo){
+            fw << 0 << " " << 0 << " " << 0 << " ";
+          }
+
+
           fw << "\n";
         }
           fw.close();
@@ -160,7 +271,7 @@ void writeTPCTracks_Reference()//const char* inputfile, const char* suffix, cons
     // mcTrack
     try {
        //open file for writing
-       ofstream fw("/Users/joachimcarlokristianhansen/st_O2_ML_SC_DS/TPC-analyzer/TPCTracks/data_files/mcTrack.txt", std::ofstream::out);
+       ofstream fw(Form("%s/mcTrack.txt",savepath), std::ofstream::out);
        //check if file was successfully opened for writing
        if (fw.is_open())
        {
@@ -194,6 +305,9 @@ void writeTPCTracks_Reference()//const char* inputfile, const char* suffix, cons
     catch (const char* msg) {
         cerr << msg << endl;
     }
+
+
+    // end void
 
     cout << endl;
     }
